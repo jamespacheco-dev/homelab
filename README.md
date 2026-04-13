@@ -23,6 +23,7 @@ host router. Private cluster access (kubectl, registry) goes through Tailscale.
 | TLS | cert-manager + Let's Encrypt | DNS-01 challenge via Cloudflare API |
 | Certificates | Wildcard `*.jamespacheco.dev` | Single cert covers all subdomains |
 | Observability | kube-prometheus-stack | Prometheus + Grafana + node-exporter |
+| Secret mirroring | reflector | Auto-mirrors TLS secrets across namespaces |
 | Private access | Tailscale | kubectl, registry, SSH |
 | DNS | Cloudflare | DDNS, wildcard CNAME, proxied |
 
@@ -111,12 +112,9 @@ annotation and let Traefik default to all entrypoints.
 ### Cross-namespace TLS secrets
 Kubernetes secrets are namespace-scoped. The wildcard TLS certificate lives in
 the `default` namespace but ingress resources in other namespaces (e.g.
-`monitoring`) need access to it. Current approach: manually copy the secret to
-each namespace.
-
-#### Future improvement: deploy
-[reflector](https://github.com/emberstack/kubernetes-reflector) to
-automatically mirror secrets across namespaces.
+`monitoring`) need access to it. [reflector](https://github.com/emberstack/kubernetes-reflector)
+automatically mirrors the secret to any namespace that needs it. The Certificate
+resource is annotated to allow reflection, and reflector handles the rest.
 
 ### Catch-all redirect
 An IngressRoute with `priority: 1` catches any subdomain not matched by a
@@ -133,8 +131,6 @@ into its own subshell — nothing leaks to the host shell environment.
 
 ## Known Issues / Future Work
 
-- TLS secrets must be manually copied to each new namespace — reflector would
-  automate this
 - Single node means no real fault tolerance — node failure takes everything down
 - Container registry not yet deployed — currently using public images only
 - GHA pipeline not yet configured — deployments are manual via `make apply-*`
