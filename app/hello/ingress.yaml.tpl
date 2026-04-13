@@ -4,7 +4,7 @@ metadata:
   name: hello
 spec:
   rules:
-  - host: hello.jamespacheco.dev
+  - host: hello.${DOMAIN}
     http:
       paths:
       - path: /

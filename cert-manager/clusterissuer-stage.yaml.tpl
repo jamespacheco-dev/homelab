@@ -5,7 +5,7 @@ metadata:
 spec:
   acme:
     server: https://acme-staging-v02.api.letsencrypt.org/directory
-    email: james.pacheco@gmail.com
+    email: ${ACME_EMAIL}
     privateKeySecretRef:
       name: letsencrypt-staging
     solvers:

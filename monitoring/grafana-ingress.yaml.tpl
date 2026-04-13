@@ -7,10 +7,10 @@ spec:
   ingressClassName: traefik
   tls:
   - hosts:
-    - grafana.jamespacheco.dev
+    - grafana.${DOMAIN}
     secretName: jamespacheco-dev-tls
   rules:
-  - host: grafana.jamespacheco.dev
+  - host: grafana.${DOMAIN}
     http:
       paths:
       - path: /
