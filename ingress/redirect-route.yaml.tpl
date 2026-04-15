@@ -12,7 +12,7 @@ spec:
     kind: Rule
     priority: 1
     middlewares:
-    - name: redirect-to-www
+    - name: redirect-to-root
     services:
     - name: noop@internal
       kind: TraefikService

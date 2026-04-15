@@ -1,6 +1,11 @@
 include .env
 export
 
+# If REDIRECT_DEST is set (e.g. "www"), redirect to that subdomain.
+# If empty, redirect to the bare domain.
+REDIRECT_TARGET := $(if $(REDIRECT_DEST),$(REDIRECT_DEST).$(DOMAIN),$(DOMAIN))
+export REDIRECT_TARGET
+
 .PHONY: apply-cert-manager apply-monitoring apply-hello apply-redirect apply-all dry-run diff \
         helm-add-repos helm-cert-manager helm-monitoring helm-reflector helm-all
 

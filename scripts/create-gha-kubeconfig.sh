@@ -1,15 +1,21 @@
 #!/usr/bin/env bash
 # create-gha-kubeconfig.sh
 #
-# Creates a scoped ServiceAccount + RBAC for GitHub Actions and outputs a
-# base64-encoded kubeconfig ready to paste into a GitHub Actions secret.
+# Creates a scoped ServiceAccount + RBAC for GitHub Actions and either outputs
+# a base64-encoded kubeconfig or sets it directly as a GitHub Actions secret.
 #
 # Usage:
-#   ./scripts/create-gha-kubeconfig.sh <namespace>
+#   ./scripts/create-gha-kubeconfig.sh <namespace> [repo]
+#
+# Without repo: prints the base64 kubeconfig for manual pasting.
+# With repo:    sets KUBECONFIG_<NAMESPACE> on jamespacheco-dev/<repo> via gh CLI.
+#               Override the org with GH_ORG=<org>.
 #
 # Example:
-#   ./scripts/create-gha-kubeconfig.sh pico
-#   ./scripts/create-gha-kubeconfig.sh math
+#   ./scripts/create-gha-kubeconfig.sh pico                    # print only
+#   ./scripts/create-gha-kubeconfig.sh pico pico               # set secret
+#   ./scripts/create-gha-kubeconfig.sh math math               # set secret
+#   GH_ORG=other-org ./scripts/create-gha-kubeconfig.sh pico pico
 #
 # RBAC scope (namespace-only, no cluster-wide access):
 #   - deployments: get/list/patch/update  (for kubectl set image, rollout status)
@@ -31,8 +37,11 @@
 
 set -euo pipefail
 
-NAMESPACE=${1:?Usage: $0 <namespace>}
+NAMESPACE=${1:?Usage: $0 <namespace> [repo]}
+REPO=${2:-}
+GH_ORG=${GH_ORG:-jamespacheco-dev}
 SA_NAME="github-actions"
+SECRET_NAME="KUBECONFIG_${NAMESPACE^^}"
 
 echo "==> Creating namespace: $NAMESPACE"
 kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
@@ -115,12 +124,24 @@ else
   B64=$(echo "$KUBECONFIG_CONTENT" | base64)
 fi
 
-echo ""
-echo "=== KUBECONFIG (base64 encoded) ==="
-echo "Add this as a GitHub Actions secret named KUBECONFIG_${NAMESPACE^^}:"
-echo ""
-echo "$B64"
-echo ""
-echo "Server: $SERVER"
-echo "Namespace: $NAMESPACE"
-echo "ServiceAccount: $SA_NAME"
+if [[ -n "$REPO" ]]; then
+  if ! command -v gh &>/dev/null; then
+    echo "Error: gh CLI not found. Install it or omit the repo argument to print manually." >&2
+    exit 1
+  fi
+  echo "==> Setting GitHub Actions secret $SECRET_NAME on $GH_ORG/$REPO..."
+  echo "$B64" | gh secret set "$SECRET_NAME" --repo "$GH_ORG/$REPO" --body -
+  echo ""
+  echo "Secret set: $SECRET_NAME → $GH_ORG/$REPO"
+  echo "Server: $SERVER"
+  echo "Namespace: $NAMESPACE"
+else
+  echo ""
+  echo "=== KUBECONFIG (base64 encoded) ==="
+  echo "Add this as a GitHub Actions secret named $SECRET_NAME:"
+  echo ""
+  echo "$B64"
+  echo ""
+  echo "Server: $SERVER"
+  echo "Namespace: $NAMESPACE"
+fi
